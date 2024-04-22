@@ -1,5 +1,4 @@
 //go:build js && wasm
-// +build js,wasm
 
 package vert
 
@@ -14,25 +13,9 @@ var (
 	array  = js.Global().Get("Array")
 )
 
-// Value is an assignable JS value.
-type Value struct {
-	js.Value
-}
-
-// JSValue returns the JS value.
-func (v Value) JSValue() js.Value {
-	return v.Value
-}
-
 // ValueOf returns the Go value as a new value.
-func ValueOf(i interface{}) Value {
-	switch i.(type) {
-	case nil, js.Value:
-		return Value{Value: js.ValueOf(i)}
-	default:
-		v := reflect.ValueOf(i)
-		return Value{Value: valueOf(v)}
-	}
+func ValueOf(i interface{}) js.Value {
+	return valueOf(reflect.ValueOf(i))
 }
 
 // valueOf recursively returns a new value.
@@ -47,7 +30,10 @@ func valueOf(v reflect.Value) js.Value {
 	case reflect.Struct:
 		return valueOfStruct(v)
 	default:
-		return js.ValueOf(v.Interface())
+		if v.IsValid() {
+			return js.ValueOf(v.Interface())
+		}
+		return null
 	}
 }
 

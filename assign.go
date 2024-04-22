@@ -1,5 +1,4 @@
 //go:build js && wasm
-// +build js,wasm
 
 package vert
 
@@ -13,13 +12,13 @@ var zero = reflect.ValueOf(nil)
 
 // AssignTo assigns a JS value to a Go pointer.
 // Returns an error on invalid assignments.
-func (v Value) AssignTo(i interface{}) error {
+func Assign(jv js.Value, i interface{}) error {
 	rv := reflect.ValueOf(i)
 	if k := rv.Kind(); k != reflect.Ptr || rv.IsNil() {
 		return &InvalidAssignmentError{Kind: k}
 	}
 
-	return recoverAssignTo(rv, v.JSValue())
+	return recoverAssignTo(rv, jv)
 }
 
 // recoverAssignTo recovers unexpected assignment panics.

@@ -1,3 +1,3 @@
 module github.com/norunners/vert
 
-go 1.16
+go 1.22.0

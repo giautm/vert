@@ -1,0 +1,11 @@
+#!/bin/bash -e
+
+export PATH="$PATH:$(go env GOROOT)/misc/wasm"
+export GOOS=js
+export GOARCH=wasm
+
+test:
+    go test ./...
+
+lint:
+    golangci-lint run ./...
