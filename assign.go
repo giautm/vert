@@ -9,6 +9,7 @@ import (
 )
 
 var zero = reflect.ValueOf(nil)
+var jsValue = reflect.TypeOf(js.Value{})
 
 // AssignTo assigns a JS value to a Go pointer.
 // Returns an error on invalid assignments.
@@ -36,11 +37,23 @@ func recoverAssignTo(rv reflect.Value, jv js.Value) (err error) {
 
 // assignTo recursively assigns a value.
 func assignTo(rv reflect.Value, jv js.Value) (reflect.Value, error) {
+	k := rv.Kind()
+	if k == reflect.Ptr {
+		if rv.IsNil() {
+			if rv.Type().Elem() == jsValue {
+				rv.Set(reflect.ValueOf(&jv))
+				return rv, nil
+			}
+		} else if rv.Elem().Type() == jsValue {
+			rv.Elem().Set(reflect.ValueOf(jv))
+			return rv, nil
+		}
+	}
+
 	if jv.Equal(js.Null()) || jv.Equal(js.Undefined()) {
 		return zero, nil
 	}
 
-	k := rv.Kind()
 	switch k {
 	case reflect.Ptr:
 		return assignToPointer(rv, jv)

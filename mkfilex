@@ -9,3 +9,6 @@ test:
 
 lint:
     golangci-lint run ./...
+
+tmp:
+    go run tmp/main.go

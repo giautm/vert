@@ -294,3 +294,26 @@ func TestInvalidAssignmentNonNilPointerError(t *testing.T) {
 		})
 	}
 }
+
+type StructWithJsValuePointer struct {
+	Value *js.Value `js:"value"`
+}
+
+func TestJsValueAssign(t *testing.T) {
+	v1 := js.Value{}
+	if err := Assign(js.Null(), &v1); err != nil {
+		t.Error(err)
+	}
+	if !v1.Equal(js.Null()) {
+		t.Errorf("expected %v, got %v", js.Null(), v1)
+	}
+	v2 := StructWithJsValuePointer{}
+	jsObj := js.Global().Get("Object").New()
+	jsObj.Set("value", js.Null())
+	if err := Assign(jsObj, &v2); err != nil {
+		t.Error(err)
+	}
+	if v2.Value == nil || !v2.Value.Equal(js.Null()) {
+		t.Errorf("expected %v, got %v", js.Null(), v2.Value)
+	}
+}
