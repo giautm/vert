@@ -8,17 +8,18 @@ import (
 	"syscall/js"
 )
 
-var zero = reflect.ValueOf(nil)
-var jsValue = reflect.TypeOf(js.Value{})
+var (
+	zero    = reflect.ValueOf(nil)
+	jsValue = reflect.TypeOf(js.Value{})
+)
 
 // AssignTo assigns a JS value to a Go pointer.
 // Returns an error on invalid assignments.
-func Assign(jv js.Value, i interface{}) error {
+func Assign(jv js.Value, i any) error {
 	rv := reflect.ValueOf(i)
-	if k := rv.Kind(); k != reflect.Ptr || rv.IsNil() {
+	if k := rv.Kind(); k != reflect.Pointer || rv.IsNil() {
 		return &InvalidAssignmentError{Kind: k}
 	}
-
 	return recoverAssignTo(rv, jv)
 }
 
@@ -30,39 +31,40 @@ func recoverAssignTo(rv reflect.Value, jv js.Value) (err error) {
 			err = &InvalidAssignmentError{rec: rec}
 		}
 	}()
-
 	_, err = assignTo(rv, jv)
 	return
 }
 
 // assignTo recursively assigns a value.
 func assignTo(rv reflect.Value, jv js.Value) (reflect.Value, error) {
-	k := rv.Kind()
-	if k == reflect.Ptr {
-		if rv.IsNil() {
+	if jv.Equal(js.Null()) || jv.Equal(js.Undefined()) {
+		switch {
+		case rv.Kind() != reflect.Pointer:
+			// Return zero for non-pointer types.
+		case rv.IsNil():
 			if rv.Type().Elem() == jsValue {
 				rv.Set(reflect.ValueOf(&jv))
 				return rv, nil
 			}
-		} else if rv.Elem().Type() == jsValue {
+		case rv.Elem().Type() == jsValue:
 			rv.Elem().Set(reflect.ValueOf(jv))
 			return rv, nil
 		}
-	}
-
-	if jv.Equal(js.Null()) || jv.Equal(js.Undefined()) {
 		return zero, nil
 	}
-
-	switch k {
-	case reflect.Ptr:
+	switch k := rv.Kind(); k {
+	case reflect.Pointer:
 		return assignToPointer(rv, jv)
 	case reflect.Interface:
 		if e := rv.Elem(); e != zero {
 			return assignToInterface(rv, e, jv)
 		}
+	case reflect.Struct:
+		if rv.Type() == jsValue {
+			rv.Set(reflect.ValueOf(jv))
+			return rv, nil
+		}
 	}
-
 	switch t := jv.Type(); t {
 	case js.TypeBoolean:
 		return assignToBasic(rv, jv.Bool(), t)
@@ -73,7 +75,7 @@ func assignTo(rv reflect.Value, jv js.Value) (reflect.Value, error) {
 	case js.TypeObject:
 		return assignToValue(rv, jv)
 	default:
-		return zero, &InvalidAssignmentError{Type: t, Kind: k}
+		return zero, &InvalidAssignmentError{Type: t, Kind: rv.Kind()}
 	}
 }
 
@@ -82,12 +84,10 @@ func assignToPointer(p reflect.Value, jv js.Value) (reflect.Value, error) {
 	if p.IsNil() {
 		p = reflect.New(p.Type().Elem())
 	}
-
-	v, err := assignTo(p.Elem(), jv)
-	if err != nil {
+	switch v, err := assignTo(p.Elem(), jv); {
+	case err != nil:
 		return zero, err
-	}
-	if v != zero {
+	case v != zero:
 		p.Elem().Set(v)
 	}
 	return p, nil
@@ -106,15 +106,13 @@ func assignToInterface(i, e reflect.Value, jv js.Value) (reflect.Value, error) {
 }
 
 // assignToBasic assigns a primitive value to a basic value.
-func assignToBasic(b reflect.Value, i interface{}, t js.Type) (val reflect.Value, err error) {
+func assignToBasic(b reflect.Value, i any, t js.Type) (val reflect.Value, err error) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			err = &InvalidAssignmentError{Type: t, Kind: b.Kind()}
 		}
 	}()
-
-	v := reflect.ValueOf(i)
-	val = v.Convert(b.Type())
+	val = reflect.ValueOf(i).Convert(b.Type())
 	return
 }
 
@@ -215,7 +213,7 @@ func assignToSlice(s reflect.Value, jv js.Value) (reflect.Value, error) {
 type InvalidAssignmentError struct {
 	Type js.Type
 	Kind reflect.Kind
-	rec  interface{}
+	rec  any
 }
 
 func (e *InvalidAssignmentError) Error() string {

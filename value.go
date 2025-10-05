@@ -14,20 +14,23 @@ var (
 )
 
 // ValueOf returns the Go value as a new value.
-func ValueOf(i interface{}) js.Value {
+func ValueOf(i any) js.Value {
 	return valueOf(reflect.ValueOf(i))
 }
 
 // valueOf recursively returns a new value.
 func valueOf(v reflect.Value) js.Value {
 	switch v.Kind() {
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 		return valueOfPointerOrInterface(v)
 	case reflect.Slice, reflect.Array:
 		return valueOfSliceOrArray(v)
 	case reflect.Map:
 		return valueOfMap(v)
 	case reflect.Struct:
+		if v.Type() == jsValue {
+			return v.Interface().(js.Value)
+		}
 		return valueOfStruct(v)
 	default:
 		if v.IsValid() {

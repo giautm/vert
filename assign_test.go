@@ -145,8 +145,8 @@ type All struct {
 	PSmall  *Small
 	PPSmall **Small
 
-	Interface  interface{}
-	PInterface *interface{}
+	Interface  any
+	PInterface *any
 
 	unexported int
 }
@@ -219,11 +219,11 @@ var pallValue = All{
 }
 
 func TestInvalidAssignmentJsToGoError(t *testing.T) {
-	var i interface{}
+	var i any
 	tests := []struct {
 		name string
-		v    interface{}
-		i    interface{}
+		v    any
+		i    any
 		err  error
 	}{
 		{"bool to int", true, 0, &InvalidAssignmentError{Type: js.TypeBoolean, Kind: reflect.Int}},
@@ -268,7 +268,7 @@ func TestInvalidAssignmentNonNilPointerError(t *testing.T) {
 	var p *struct{}
 	tests := []struct {
 		name string
-		i    interface{}
+		i    any
 		err  error
 	}{
 		{"nil pointer", p, &InvalidAssignmentError{Kind: reflect.Ptr}},
@@ -296,7 +296,8 @@ func TestInvalidAssignmentNonNilPointerError(t *testing.T) {
 }
 
 type StructWithJsValuePointer struct {
-	Value *js.Value `js:"value"`
+	V1 js.Value  `js:"v1"`
+	V2 *js.Value `js:"v2"`
 }
 
 func TestJsValueAssign(t *testing.T) {
@@ -307,13 +308,26 @@ func TestJsValueAssign(t *testing.T) {
 	if !v1.Equal(js.Null()) {
 		t.Errorf("expected %v, got %v", js.Null(), v1)
 	}
-	v2 := StructWithJsValuePointer{}
+
 	jsObj := js.Global().Get("Object").New()
-	jsObj.Set("value", js.Null())
+	jsObj.Set("v1", js.ValueOf(100))
+	jsObj.Set("v2", js.ValueOf(200))
+	v2 := StructWithJsValuePointer{}
 	if err := Assign(jsObj, &v2); err != nil {
 		t.Error(err)
 	}
-	if v2.Value == nil || !v2.Value.Equal(js.Null()) {
-		t.Errorf("expected %v, got %v", js.Null(), v2.Value)
+	if !v2.V1.Equal(js.ValueOf(100)) {
+		t.Errorf("expected %v, got %v", js.ValueOf(100), v2.V1)
+	}
+	if !v2.V2.Equal(js.ValueOf(200)) {
+		t.Errorf("expected %v, got %v", js.ValueOf(100), v2.V2)
+	}
+
+	v := ValueOf(v2)
+	if !v.Get("v1").Equal(jsObj.Get("v1")) {
+		t.Errorf("expected different v1 values: %v and %v", v.Get("v1"), jsObj.Get("v1"))
+	}
+	if !v.Get("v2").Equal(jsObj.Get("v2")) {
+		t.Errorf("expected different v2 values: %v and %v", v.Get("v2"), jsObj.Get("v2"))
 	}
 }
