@@ -95,11 +95,10 @@ func assignToPointer(p reflect.Value, jv js.Value) (reflect.Value, error) {
 
 // assignToInterface assigns a value to an interface.
 func assignToInterface(i, e reflect.Value, jv js.Value) (reflect.Value, error) {
-	v, err := assignTo(e, jv)
-	if err != nil {
+	switch v, err := assignTo(e, jv); {
+	case err != nil:
 		return zero, err
-	}
-	if v != zero {
+	case v != zero:
 		i.Set(v)
 	}
 	return i, nil
@@ -134,8 +133,7 @@ func assignToValue(rv reflect.Value, jv js.Value) (reflect.Value, error) {
 func assignToStruct(s reflect.Value, val js.Value) (reflect.Value, error) {
 	t := s.Type()
 	s = reflect.New(t).Elem()
-	n := s.NumField()
-	for i := 0; i < n; i++ {
+	for i := 0; i < s.NumField(); i++ {
 		if f := s.Field(i); f.CanInterface() {
 			k := nameOf(t.Field(i))
 			jf := val.Get(k)

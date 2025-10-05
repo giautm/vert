@@ -54,8 +54,7 @@ func valueOfSliceOrArray(v reflect.Value) js.Value {
 		return null
 	}
 	a := array.New()
-	n := v.Len()
-	for i := 0; i < n; i++ {
+	for i := 0; i < v.Len(); i++ {
 		e := v.Index(i)
 		a.SetIndex(i, valueOf(e))
 	}
@@ -69,8 +68,7 @@ func valueOfMap(v reflect.Value) js.Value {
 		return null
 	}
 	m := object.New()
-	i := v.MapRange()
-	for i.Next() {
+	for i := v.MapRange(); i.Next(); {
 		k := i.Key().Interface().(string)
 		m.Set(k, valueOf(i.Value()))
 	}
@@ -79,10 +77,8 @@ func valueOfMap(v reflect.Value) js.Value {
 
 // valueOfStruct returns a new object value.
 func valueOfStruct(v reflect.Value) js.Value {
-	t := v.Type()
-	s := object.New()
-	n := v.NumField()
-	for i := 0; i < n; i++ {
+	t, s := v.Type(), object.New()
+	for i := 0; i < v.NumField(); i++ {
 		if f := v.Field(i); f.CanInterface() {
 			k := nameOf(t.Field(i))
 			s.Set(k, valueOf(f))
@@ -93,12 +89,11 @@ func valueOfStruct(v reflect.Value) js.Value {
 
 // nameOf returns the JS tag name, otherwise the field name.
 func nameOf(sf reflect.StructField) string {
-	name := sf.Tag.Get("js")
-	if name == "" {
-		name = sf.Tag.Get("json")
+	if n := sf.Tag.Get("js"); n != "" {
+		return n
 	}
-	if name == "" {
-		return sf.Name
+	if n := sf.Tag.Get("json"); n != "" {
+		return n
 	}
-	return name
+	return sf.Name
 }
