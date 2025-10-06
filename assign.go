@@ -11,6 +11,7 @@ import (
 var (
 	zero    = reflect.ValueOf(nil)
 	jsValue = reflect.TypeOf(js.Value{})
+	mapType = reflect.TypeOf(new(map[string]any)).Elem()
 )
 
 // AssignTo assigns a JS value to a Go pointer.
@@ -117,13 +118,15 @@ func assignToBasic(b reflect.Value, i any, t js.Type) (val reflect.Value, err er
 
 // assignToObject assigns an object to a value.
 func assignToValue(rv reflect.Value, jv js.Value) (reflect.Value, error) {
-	switch k := rv.Kind(); k {
-	case reflect.Struct:
+	switch k := rv.Kind(); {
+	case k == reflect.Struct:
 		return assignToStruct(rv, jv)
-	case reflect.Map:
+	case k == reflect.Map:
 		return assignToMap(rv, jv)
-	case reflect.Slice:
+	case k == reflect.Slice:
 		return assignToSlice(rv, jv)
+	case k == reflect.Interface && rv.NumMethod() == 0:
+		return assignToInterface(rv, reflect.New(mapType).Elem(), jv)
 	default:
 		return zero, &InvalidAssignmentError{Type: jv.Type(), Kind: k}
 	}

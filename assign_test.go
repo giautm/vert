@@ -220,7 +220,6 @@ var pallValue = All{
 }
 
 func TestInvalidAssignmentJsToGoError(t *testing.T) {
-	var i any
 	tests := []struct {
 		name string
 		v    any
@@ -248,7 +247,6 @@ func TestInvalidAssignmentJsToGoError(t *testing.T) {
 		{"object to array", object.New(), [0]struct{}{}, &InvalidAssignmentError{Type: js.TypeObject, Kind: reflect.Array}},
 		{"object to channel", object.New(), make(chan struct{}), &InvalidAssignmentError{Type: js.TypeObject, Kind: reflect.Chan}},
 		{"object to func", object.New(), func() {}, &InvalidAssignmentError{Type: js.TypeObject, Kind: reflect.Func}},
-		{"object to nil interface", object.New(), i, &InvalidAssignmentError{Type: js.TypeObject, Kind: reflect.Interface}},
 		{"object to unsafe pointer", object.New(), unsafe.Pointer(uintptr(0)), &InvalidAssignmentError{Type: js.TypeObject, Kind: reflect.UnsafePointer}},
 	}
 
@@ -314,6 +312,8 @@ type StructWithJsValuePointer struct {
 	V2        *js.Value    `js:"v2"`
 	K         EncodingKind `js:"k"`
 	F         Foo          `js:"f"`
+	M         any          `js:"m"`
+	B         any          `js:"b"`
 }
 
 func TestJsValueAssign(t *testing.T) {
@@ -332,6 +332,8 @@ func TestJsValueAssign(t *testing.T) {
 	jsObj.Set("v2", js.ValueOf(200))
 	jsObj.Set("k", "utf-8")
 	jsObj.Set("f", 1.5)
+	jsObj.Set("m", map[string]any{"field": "value"})
+	jsObj.Set("b", true)
 	v2 := StructWithJsValuePointer{}
 	if err := Assign(jsObj, &v2); err != nil {
 		t.Error(err)
