@@ -4,6 +4,7 @@ package vert
 
 import (
 	"reflect"
+	"strings"
 	"syscall/js"
 )
 
@@ -149,7 +150,7 @@ func nameOf(sf reflect.StructField) string {
 	if n := sf.Tag.Get("js"); n != "" {
 		return n
 	}
-	if n := sf.Tag.Get("json"); n != "" {
+	if n, _, _ := strings.Cut(sf.Tag.Get("json"), ","); n != "" {
 		return n
 	}
 	return sf.Name

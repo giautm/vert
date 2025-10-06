@@ -312,7 +312,7 @@ type StructWithJsValuePointer struct {
 	V2        *js.Value    `js:"v2"`
 	K         EncodingKind `js:"k"`
 	F         Foo          `js:"f"`
-	M         any          `js:"m"`
+	M         any          `json:"m,omitempty"`
 	B         any          `js:"b"`
 }
 
@@ -332,7 +332,7 @@ func TestJsValueAssign(t *testing.T) {
 	jsObj.Set("v2", js.ValueOf(200))
 	jsObj.Set("k", "utf-8")
 	jsObj.Set("f", 1.5)
-	jsObj.Set("m", map[string]any{"field": "value"})
+	jsObj.Set("m", ValueOf(map[string]any{"field": "value", "f1": []string{"a", "b"}}))
 	jsObj.Set("b", true)
 	v2 := StructWithJsValuePointer{}
 	if err := Assign(jsObj, &v2); err != nil {
