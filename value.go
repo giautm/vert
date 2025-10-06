@@ -80,8 +80,37 @@ func valueOfStruct(v reflect.Value) js.Value {
 	t, s := v.Type(), object.New()
 	for i := 0; i < v.NumField(); i++ {
 		if f := v.Field(i); f.CanInterface() {
-			k := nameOf(t.Field(i))
-			s.Set(k, valueOf(f))
+			// Inline embedded struct or *struct fields by merging their properties,
+			// unless a tag name is provided (then use that name as a nested property).
+			sf := t.Field(i)
+			k := nameOf(sf)
+			if !sf.Anonymous {
+				s.Set(k, valueOf(f))
+				continue
+			}
+			ft := f.Type()
+			if ft.Kind() == reflect.Pointer {
+				if f.IsNil() {
+					continue
+				}
+				ft = ft.Elem()
+			}
+			if ft.Kind() != reflect.Struct {
+				continue
+			}
+			// If the field has a tag-provided name, use it as a nested property.
+			if k != sf.Name {
+				s.Set(k, valueOf(f))
+				continue
+			}
+			// Otherwise, merge the embedded struct or *struct properties.
+			if ov := valueOf(f); !ov.IsNull() && !ov.IsUndefined() {
+				keys := object.Call("keys", ov)
+				for j := 0; j < keys.Length(); j++ {
+					k := keys.Index(j).String()
+					s.Set(k, ov.Get(k))
+				}
+			}
 		}
 	}
 	return s

@@ -135,16 +135,18 @@ func assignToStruct(s reflect.Value, val js.Value) (reflect.Value, error) {
 	s = reflect.New(t).Elem()
 	for i := 0; i < s.NumField(); i++ {
 		if f := s.Field(i); f.CanInterface() {
-			k := nameOf(t.Field(i))
-			jf := val.Get(k)
-			v, err := assignTo(f, jf)
-			if err != nil {
+			fv := val
+			sf := t.Field(i)
+			k := nameOf(sf)
+			if !sf.Anonymous || sf.Name != k {
+				fv = val.Get(nameOf(sf))
+			}
+			switch v, err := assignTo(f, fv); {
+			case err != nil:
 				return zero, err
+			case v != zero:
+				f.Set(v)
 			}
-			if v == zero {
-				continue
-			}
-			f.Set(v)
 		}
 	}
 	return s, nil

@@ -3,6 +3,7 @@
 package vert
 
 import (
+	"fmt"
 	"reflect"
 	"syscall/js"
 	"testing"
@@ -295,9 +296,19 @@ func TestInvalidAssignmentNonNilPointerError(t *testing.T) {
 	}
 }
 
+type Embedded1 struct {
+	A int `json:"a"`
+}
+
+type Embedded2 struct {
+	A int `json:"a"`
+}
+
 type StructWithJsValuePointer struct {
-	V1 js.Value  `js:"v1"`
-	V2 *js.Value `js:"v2"`
+	Embedded1
+	Embedded2 `json:"embedded"`
+	V1        js.Value  `js:"v1"`
+	V2        *js.Value `js:"v2"`
 }
 
 func TestJsValueAssign(t *testing.T) {
@@ -310,11 +321,20 @@ func TestJsValueAssign(t *testing.T) {
 	}
 
 	jsObj := js.Global().Get("Object").New()
+	jsObj.Set("a", 10)
+	jsObj.Set("embedded", map[string]any{"a": 20})
 	jsObj.Set("v1", js.ValueOf(100))
 	jsObj.Set("v2", js.ValueOf(200))
 	v2 := StructWithJsValuePointer{}
 	if err := Assign(jsObj, &v2); err != nil {
 		t.Error(err)
+	}
+	fmt.Println(v2)
+	if v2.Embedded1.A != 10 {
+		t.Errorf("expected %v, got %v", 10, v2.Embedded1.A)
+	}
+	if v2.Embedded2.A != 20 {
+		t.Errorf("expected %v, got %v", 20, v2.Embedded2.A)
 	}
 	if !v2.V1.Equal(js.ValueOf(100)) {
 		t.Errorf("expected %v, got %v", js.ValueOf(100), v2.V1)
@@ -324,6 +344,13 @@ func TestJsValueAssign(t *testing.T) {
 	}
 
 	v := ValueOf(v2)
+	if !v.Get("a").Equal(jsObj.Get("a")) {
+		t.Errorf("expected different a values: %v and %v", v.Get("a"), jsObj.Get("a"))
+	}
+	if !v.Get("embedded").Get("a").Equal(jsObj.Get("embedded").Get("a")) {
+		t.Errorf("expected different a values: %v and %v", v.Get("embedded").Get("a"),
+			jsObj.Get("embedded").Get("a"))
+	}
 	if !v.Get("v1").Equal(jsObj.Get("v1")) {
 		t.Errorf("expected different v1 values: %v and %v", v.Get("v1"), jsObj.Get("v1"))
 	}
