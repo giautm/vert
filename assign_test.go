@@ -296,6 +296,9 @@ func TestInvalidAssignmentNonNilPointerError(t *testing.T) {
 	}
 }
 
+type EncodingKind string
+type Foo float32
+
 type Embedded1 struct {
 	A int `json:"a"`
 }
@@ -307,8 +310,10 @@ type Embedded2 struct {
 type StructWithJsValuePointer struct {
 	Embedded1
 	Embedded2 `json:"embedded"`
-	V1        js.Value  `js:"v1"`
-	V2        *js.Value `js:"v2"`
+	V1        js.Value     `js:"v1"`
+	V2        *js.Value    `js:"v2"`
+	K         EncodingKind `js:"k"`
+	F         Foo          `js:"f"`
 }
 
 func TestJsValueAssign(t *testing.T) {
@@ -325,6 +330,8 @@ func TestJsValueAssign(t *testing.T) {
 	jsObj.Set("embedded", map[string]any{"a": 20})
 	jsObj.Set("v1", js.ValueOf(100))
 	jsObj.Set("v2", js.ValueOf(200))
+	jsObj.Set("k", "utf-8")
+	jsObj.Set("f", 1.5)
 	v2 := StructWithJsValuePointer{}
 	if err := Assign(jsObj, &v2); err != nil {
 		t.Error(err)
@@ -344,6 +351,12 @@ func TestJsValueAssign(t *testing.T) {
 	}
 
 	v := ValueOf(v2)
+	if !v.Get("k").Equal(jsObj.Get("k")) {
+		t.Errorf("expected different a values: %v and %v", v.Get("k"), jsObj.Get("k"))
+	}
+	if !v.Get("f").Equal(jsObj.Get("f")) {
+		t.Errorf("expected different a values: %v and %v", v.Get("f"), jsObj.Get("f"))
+	}
 	if !v.Get("a").Equal(jsObj.Get("a")) {
 		t.Errorf("expected different a values: %v and %v", v.Get("a"), jsObj.Get("a"))
 	}

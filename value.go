@@ -18,6 +18,27 @@ func ValueOf(i any) js.Value {
 	return valueOf(reflect.ValueOf(i))
 }
 
+var (
+	kindToType = map[reflect.Kind]reflect.Type{
+		reflect.String:     reflect.TypeOf(""),
+		reflect.Int:        reflect.TypeOf(int(0)),
+		reflect.Int8:       reflect.TypeOf(int8(0)),
+		reflect.Int16:      reflect.TypeOf(int16(0)),
+		reflect.Int32:      reflect.TypeOf(int32(0)),
+		reflect.Int64:      reflect.TypeOf(int64(0)),
+		reflect.Uint:       reflect.TypeOf(uint(0)),
+		reflect.Uint8:      reflect.TypeOf(uint8(0)),
+		reflect.Uint16:     reflect.TypeOf(uint16(0)),
+		reflect.Uint32:     reflect.TypeOf(uint32(0)),
+		reflect.Uint64:     reflect.TypeOf(uint64(0)),
+		reflect.Bool:       reflect.TypeOf(false),
+		reflect.Float32:    reflect.TypeOf(float32(0)),
+		reflect.Float64:    reflect.TypeOf(float64(0)),
+		reflect.Complex64:  reflect.TypeOf(complex64(0)),
+		reflect.Complex128: reflect.TypeOf(complex128(0)),
+	}
+)
+
 // valueOf recursively returns a new value.
 func valueOf(v reflect.Value) js.Value {
 	switch v.Kind() {
@@ -32,6 +53,12 @@ func valueOf(v reflect.Value) js.Value {
 			return v.Interface().(js.Value)
 		}
 		return valueOfStruct(v)
+	case reflect.String, reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64,
+		reflect.Complex64, reflect.Complex128:
+		return js.ValueOf(v.Convert(kindToType[v.Kind()]).Interface())
 	default:
 		if v.IsValid() {
 			return js.ValueOf(v.Interface())
@@ -68,9 +95,10 @@ func valueOfMap(v reflect.Value) js.Value {
 		return null
 	}
 	m := object.New()
-	for i := v.MapRange(); i.Next(); {
-		k := i.Key().Interface().(string)
-		m.Set(k, valueOf(i.Value()))
+	for it := v.MapRange(); it.Next(); {
+		// Support named string key types by converting to plain string.
+		k := it.Key().Convert(reflect.TypeOf("")).String()
+		m.Set(k, valueOf(it.Value()))
 	}
 	return m
 }
